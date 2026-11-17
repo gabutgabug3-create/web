@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital File Marketplace</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome untuk Ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        /* Video Latar Belakang Terang & Jelas */
+        #bg-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: -2;
+            filter: brightness(1.05); /* Terang dan tampak jelas */
+        }
+        /* Overlay ringan agar teks tetap terbaca tanpa menutupi video */
+        #bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(4px);
+            z-index: -1;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        /* Animasi Halus */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(79, 70, 229, 0.5); border-radius: 9999px; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Video Latar Belakang -->
+    <video id="bg-video" autoplay loop muted playsinline>
+        <source src="" type="video/mp4">
+    </video>
+    <div id="bg-overlay"></div>
+
+    <!-- Custom Toast / Notification Box (Pengganti alert) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Modal Custom Konfirmasi / Peringatan -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 fade-in">
+            <h3 id="modal-title" class="text-xl font-bold text-slate-900 mb-2">Informasi</h3>
+            <div id="modal-body" class="text-slate-600 text-sm mb-6 space-y-3"></div>
+            <div id="modal-actions" class="flex justify-end gap-3"></div>
+        </div>
+    </div>
+
+    <!-- Layar Website Tutup (Maintenance / Jam Operasional) -->
+    <div id="closed-screen" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-40 hidden flex flex-col items-center justify-center p-6 text-center text-white">
+        <div class="w-20 h-20 bg-rose-500/20 text-rose-400 rounded-full flex items-center justify-center text-4xl mb-4 border border-rose-500/30">
+            <i class="fas fa-store-slash"></i>
+        </div>
+        <h1 class="text-3xl font-extrabold mb-2">Website Sedang Tutup</h1>
+        <p id="closed-reason-text" class="text-slate-300 max-w-md mb-6">Layanan sedang di luar jam operasional atau ditutup sementara oleh pengelola.</p>
+        <div class="bg-slate-800/80 border border-slate-700 rounded-xl px-6 py-3 text-sm text-indigo-300">
+            <i class="far fa-clock mr-2"></i> Jadwal Operasional: <span id="closed-schedule-display" class="font-semibold text-white">24 Jam</span>
+        </div>
+    </div>
+
+    <!-- ==================== HALAMAN OTENTIKASI (LOGIN / DAFTAR) ==================== -->
+    <div id="auth-view" class="flex-1 flex items-center justify-center p-4">
+        <div class="glass-card rounded-3xl shadow-2xl max-w-md w-full p-8 fade-in">
+            <!-- Header Branding -->
+            <div class="text-center mb-6">
+                <img id="auth-app-logo" src="https://placehold.co/80x80/4f46e5/ffffff?text=FM" alt="Logo" class="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover shadow-md">
+                <h1 id="auth-app-name" class="text-2xl font-extrabold text-slate-900">FZZ File Market</h1>
+                <p class="text-xs text-slate-500 mt-1">Platform Jual Beli File Digital Terpercaya</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="grid grid-cols-2 bg-slate-200/70 p-1 rounded-xl mb-6">
+                <button id="tab-login-btn" onclick="switchAuthTab('login')" class="py-2 text-sm font-semibold rounded-lg bg-white text-indigo-600 shadow-sm transition">Masuk / Login</button>
+                <button id="tab-register-btn" onclick="switchAuthTab('register')" class="py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">Daftar Akun</button>
+            </div>
+
+            <!-- Form Login -->
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Username</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fas fa-user"></i></span>
+                        <input type="text" id="login-username" required placeholder="Masukkan username anda" class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fas fa-lock"></i></span>
+                        <input type="password" id="login-password" required placeholder="Masukkan password anda" class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition transform active:scale-95">
+                    Masuk Sekarang <i class="fas fa-arrow-right ml-1"></i>
+                </button>
+            </form>
+
+            <!-- Form Register -->
+            <form id="register-form" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Username</label>
+                    <input type="text" id="reg-username" required placeholder="Buat username unik" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Password</label>
+                    <input type="password" id="reg-password" required placeholder="Buat password" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Umur (Tahun)</label>
+                    <input type="number" id="reg-age" required min="10" max="100" placeholder="Contoh: 20" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition transform active:scale-95">
+                    Daftar Akun Baru <i class="fas fa-user-plus ml-1"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL LOGIN ADMIN RAHASIA (CTRL+F+Z) ==================== -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 text-white rounded-3xl shadow-2xl max-w-sm w-full p-7 fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <span class="px-2.5 py-1 bg-rose-500/20 text-rose-400 text-xs font-bold rounded-lg border border-rose-500/30">
+                    <i class="fas fa-shield-alt mr-1"></i> AKSES TERBATAS
+                </span>
+                <button onclick="closeModal('admin-login-modal')" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <h2 class="text-xl font-bold mb-1">Otorisasi Administrator</h2>
+            <p class="text-xs text-slate-400 mb-5">Masukkan kredensial pengelola sistem.</p>
+            <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">ID Pengelola</label>
+                    <input type="text" id="admin-login-user" required autocomplete="off" class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Kode Sandi</label>
+                    <input type="password" id="admin-login-pass" required autocomplete="off" class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-lg transition">
+                    Masuk Panel Kontrol
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== APLIKASI UTAMA (SETELAH LOGIN) ==================== -->
+    <div id="main-app" class="hidden flex-1 flex flex-col">
+        <!-- Navbar -->
+        <nav class="glass-card sticky top-0 z-30 border-b border-slate-200/80 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <!-- Brand -->
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="switchMainSection('marketplace')">
+                        <img id="nav-app-logo" src="https://placehold.co/48x48/4f46e5/ffffff?text=FM" alt="Logo" class="w-10 h-10 rounded-xl object-cover shadow">
+                        <div>
+                            <span id="nav-app-name" class="font-extrabold text-lg text-slate-900 tracking-tight block leading-none">FZZ File Market</span>
+                            <span id="nav-store-status" class="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Buka
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Info Akun & Saldo -->
+                    <div class="flex items-center gap-2 sm:gap-4">
+                        <!-- Saldo Badge -->
+                        <div onclick="openDepositModal()" class="cursor-pointer bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-xl flex items-center gap-2 transition">
+                            <i class="fas fa-wallet text-indigo-600"></i>
+                            <div class="text-left">
+                                <div class="text-[10px] text-slate-500 font-semibold leading-none">Saldo Anda</div>
+                                <div id="nav-user-balance" class="text-xs sm:text-sm font-bold text-indigo-700">Rp 0</div>
+                            </div>
+                            <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">+</span>
+                        </div>
+
+                        <!-- Profil User + Centang Biru -->
+                        <div class="flex items-center gap-2 bg-white/80 border border-slate-200 px-3 py-1.5 rounded-xl">
+                            <div class="text-right hidden sm:block">
+                                <div class="text-xs font-bold text-slate-900 flex items-center justify-end gap-1">
+                                    <span id="nav-username">User</span>
+                                    <!-- Centang Biru Agen -->
+                                    <i id="nav-blue-tick" class="fas fa-check-circle text-sky-500 hidden" title="Agen Terverifikasi"></i>
+                                    <!-- Badge Admin -->
+                                    <span id="nav-admin-badge" class="hidden px-1.5 py-0.5 bg-rose-600 text-white text-[9px] rounded font-bold">ADMIN</span>
+                                </div>
+                                <div id="nav-user-role" class="text-[10px] text-slate-500">Pelanggan</div>
+                            </div>
+                            <button onclick="handleLogout()" title="Keluar" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu Navigasi Sekunder -->
+                <div class="flex items-center gap-2 overflow-x-auto py-2 border-t border-slate-200/50 text-xs sm:text-sm font-semibold">
+                    <button onclick="switchMainSection('marketplace')" id="nav-btn-marketplace" class="nav-tab px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white whitespace-nowrap transition">
+                        <i class="fas fa-store mr-1.5"></i> Katalog File
+                    </button>
+                    <button onclick="switchMainSection('my-purchases')" id="nav-btn-my-purchases" class="nav-tab px-3.5 py-1.5 rounded-xl text-slate-600 hover:bg-white whitespace-nowrap transition">
+                        <i class="fas fa-download mr-1.5"></i> File Dibeli
+                    </button>
+                    <button onclick="openDepositModal()" class="px-3.5 py-1.5 rounded-xl text-slate-600 hover:bg-white whitespace-nowrap transition">
+                        <i class="fas fa-qrcode mr-1.5 text-indigo-600"></i> Deposit QRIS
+                    </button>
+                    <button onclick="openRedeemModal()" class="px-3.5 py-1.5 rounded-xl text-slate-600 hover:bg-white whitespace-nowrap transition">
+                        <i class="fas fa-ticket-alt mr-1.5 text-amber-500"></i> Kode Redeem
+                    </button>
+                    <button onclick="openPromoModal()" class="px-3.5 py-1.5 rounded-xl text-slate-600 hover:bg-white whitespace-nowrap transition">
+                        <i class="fab fa-whatsapp mr-1.5 text-emerald-600"></i> Promosi Saluran WA
+                    </button>
+                    <!-- Tombol Daftar Agen (Untuk Pelanggan Biasa) -->
+                    <button id="nav-btn-apply-agent" onclick="openApplyAgentModal()" class="px-3.5 py-1.5 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 whitespace-nowrap transition">
+                        <i class="fas fa-check-circle mr-1.5 text-sky-500"></i> Daftar Agen
+                    </button>
+                    <!-- Tombol Panel Agen (Untuk Agen Centang Biru & Admin) -->
+                    <button id="nav-btn-agent-panel" onclick="switchMainSection('agent-panel')" class="nav-tab hidden px-3.5 py-1.5 rounded-xl bg-sky-600 text-white whitespace-nowrap transition">
+                        <i class="fas fa-briefcase mr-1.5"></i> Panel Agen / Jual File
+                    </button>
+                    <!-- Tombol Panel Admin (Hanya muncul jika login sebagai Admin) -->
+                    <button id="nav-btn-admin-panel" onclick="switchMainSection('admin-panel')" class="nav-tab hidden px-3.5 py-1.5 rounded-xl bg-rose-600 text-white whitespace-nowrap transition">
+                        <i class="fas fa-cogs mr-1.5"></i> Panel Admin
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Konten Utama -->
+        <main class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex-1 space-y-6">
+
+            <!-- PAPAN INFORMASI & DISKON HARI INI -->
+            <div class="glass-card rounded-2xl p-4 sm:p-5 shadow-md border-l-4 border-indigo-600 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg shrink-0 mt-0.5">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="font-bold text-slate-900 text-sm sm:text-base">Papan Informasi</h2>
+                            <span id="info-discount-badge" class="hidden px-2.5 py-0.5 bg-rose-500 text-white text-xs font-extrabold rounded-full animate-bounce">
+                                DISKON 0% HARI INI!
+                            </span>
+                            <span class="px-2 py-0.5 bg-slate-200 text-slate-700 text-[11px] font-semibold rounded-md">
+                                Pajak Layanan: <span id="info-tax-display">Rp 0</span>
+                            </span>
+                        </div>
+                        <p id="info-board-text" class="text-xs sm:text-sm text-slate-600 mt-1">Selamat datang di marketplace file digital! Gunakan saldo Anda untuk membeli file berkualitas dan aman.</p>
+                    </div>
+                </div>
+                <div class="text-xs text-slate-500 bg-white/70 px-3 py-2 rounded-xl border border-slate-200 shrink-0">
+                    <i class="far fa-clock text-indigo-600 mr-1"></i> Jam Buka: <span id="info-hours-text" class="font-bold text-slate-800">24 Jam</span>
+                </div>
+            </div>
+
+            <!-- PROMOSI SALURAN WHATSAPP PELANGGAN / AGEN / ADMIN -->
+            <div id="wa-promo-section" class="glass-card rounded-2xl p-4 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fab fa-whatsapp text-emerald-500 text-lg"></i> Saluran WhatsApp Dipromosikan
+                    </h3>
+                    <button onclick="openPromoModal()" class="text-xs font-semibold text-emerald-700 hover:underline">+ Promosikan Saluran Anda</button>
+                </div>
+                <div id="wa-promo-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <!-- Item promo akan dimuat di sini -->
+                </div>
+            </div>
+
+            <!-- ==================== SECTION 1: KATALOG FILE (MARKETPLACE) ==================== -->
+            <section id="section-marketplace" class="space-y-4 fade-in">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 class="text-xl font-extrabold text-slate-900">Katalog File Dijual</h2>
+                    <div class="relative w-full sm:w-72">
+                        <i class="fas fa-search absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                        <input type="text" id="search-file-input" oninput="renderMarketplaceFiles()" placeholder="Cari nama file atau penjual..." class="w-full pl-9 pr-4 py-2 bg-white/90 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div id="marketplace-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- Kartu file akan dirender oleh JS -->
+                </div>
+            </section>
+
+            <!-- ==================== SECTION 2: FILE YANG SUDAH DIBELI ==================== -->
+            <section id="section-my-purchases" class="hidden space-y-4 fade-in">
+                <h2 class="text-xl font-extrabold text-slate-900">Riwayat & File yang Anda Beli</h2>
+                <div id="purchased-files-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- Daftar file yang dibeli -->
+                </div>
+            </section>
+
+            <!-- ==================== SECTION 3: PANEL AGEN (JUAL FILE) ==================== -->
+            <section id="section-agent-panel" class="hidden space-y-6 fade-in">
+                <div class="glass-card rounded-2xl p-6 shadow-md">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                                Panel Penjualan File <i class="fas fa-check-circle text-sky-500"></i>
+                            </h2>
+                            <p class="text-xs text-slate-500">Unggah file untuk diperjualbelikan. File dari Agen wajib lolos uji keamanan bebas malware oleh Admin.</p>
+                        </div>
+                    </div>
+
+                    <form onsubmit="handleUploadSaleFile(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/70 p-4 rounded-xl border border-slate-200">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nama / Judul File</label>
+                            <input type="text" id="sale-file-title" required placeholder="Contoh: Script Bot Auto Order v2" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Harga Jual (Rupiah)</label>
+                            <input type="number" id="sale-file-price" required min="100" placeholder="Contoh: 15000" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Deskripsi File</label>
+                            <textarea id="sale-file-desc" rows="2" required placeholder="Jelaskan kegunaan dan fitur file ini..." class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Upload File Produk</label>
+                            <input type="file" id="sale-file-upload" required class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Upload QRIS Penerima (Otomatis Masuk Saldo/QRIS)</label>
+                            <input type="file" id="sale-agent-qris" accept="image/*" required class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+                        </div>
+                        <div class="md:col-span-2">
+                            <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition">
+                                <i class="fas fa-cloud-upload-alt mr-1.5"></i> Publikasikan File Sekarang
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Statistik File Milik Agen/Admin -->
+                <div class="glass-card rounded-2xl p-6 shadow-md">
+                    <h3 class="text-lg font-bold text-slate-900 mb-4">Daftar File Anda & Statistik Pengunjung</h3>
+                    <div id="agent-my-files-list" class="space-y-3">
+                        <!-- List file milik penjual -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== SECTION 4: PANEL ADMIN ==================== -->
+            <section id="section-admin-panel" class="hidden space-y-6 fade-in">
+                <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-xl border border-slate-700">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-700 pb-4 mb-6">
+                        <div>
+                            <span class="px-2.5 py-0.5 bg-rose-600 text-white text-xs font-bold rounded-md uppercase">Super Administrator</span>
+                            <h2 class="text-2xl font-extrabold mt-1">Pusat Kontrol & Manajemen Sistem</h2>
+                        </div>
+                        <div class="bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 text-right">
+                            <div class="text-xs text-slate-400">Total Pendapatan Pajak & Promo Admin</div>
+                            <div id="admin-revenue-display" class="text-xl font-extrabold text-emerald-400">Rp 0</div>
+                        </div>
+                    </div>
+
+                    <!-- Sub-tabs Admin -->
+                    <div class="flex flex-wrap gap-2 mb-6">
+                        <button onclick="switchAdminTab('users')" class="admin-sub-btn px-3.5 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold">1. Pengguna & Agen</button>
+                        <button onclick="switchAdminTab('deposits')" class="admin-sub-btn px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">2. Verifikasi Deposit QRIS</button>
+                        <button onclick="switchAdminTab('files')" class="admin-sub-btn px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">3. Uji Malware File Agen</button>
+                        <button onclick="switchAdminTab('settings')" class="admin-sub-btn px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">4. Pengaturan Web, QRIS & Jam</button>
+                        <button onclick="switchAdminTab('promo-redeem')" class="admin-sub-btn px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">5. Kode Redeem, Diskon & Info</button>
+                    </div>
+
+                    <!-- TAB ADMIN 1: DAFTAR PENGGUNA, PENGAJUAN AGEN, BLOKIR & HAPUS -->
+                    <div id="admin-tab-users" class="admin-tab-content space-y-6">
+                        <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                            <h3 class="font-bold text-amber-400 mb-3 text-sm"><i class="fas fa-user-check mr-1.5"></i> Pengajuan Pendaftaran Agen (Menunggu Verifikasi)</h3>
+                            <div id="admin-agent-requests" class="space-y-2 text-xs"></div>
+                        </div>
+
+                        <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 overflow-x-auto">
+                            <h3 class="font-bold text-white mb-3 text-sm"><i class="fas fa-users mr-1.5"></i> Semua Pengguna & Agen Terdaftar</h3>
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-700 text-slate-400">
+                                        <th class="py-2 px-3">Username</th>
+                                        <th class="py-2 px-3">Password</th>
+                                        <th class="py-2 px-3">Umur</th>
+                                        <th class="py-2 px-3">Status / Peran</th>
+                                        <th class="py-2 px-3">Saldo</th>
+                                        <th class="py-2 px-3">Aksi Admin</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-users-tbody" class="divide-y divide-slate-700/60">
+                                    <!-- Baris user dimuat via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB ADMIN 2: VERIFIKASI DEPOSIT QRIS -->
+                    <div id="admin-tab-deposits" class="admin-tab-content hidden space-y-4">
+                        <h3 class="font-bold text-white text-sm">Permintaan Deposit Saldo (Pending & Riwayat)</h3>
+                        <div id="admin-deposits-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"></div>
+                    </div>
+
+                    <!-- TAB ADMIN 3: UJI MALWARE FILE AGEN -->
+                    <div id="admin-tab-files" class="admin-tab-content hidden space-y-4">
+                        <h3 class="font-bold text-white text-sm">Antrean Uji Bebas Malware File Agen</h3>
+                        <div id="admin-files-audit-list" class="space-y-3 text-xs"></div>
+                    </div>
+
+                    <!-- TAB ADMIN 4: PENGATURAN WEB, QRIS, JAM BUKA/TUTUP, LOGO, VIDEO -->
+                    <div id="admin-tab-settings" class="admin-tab-content hidden grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                        <!-- Branding & Media -->
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
+                            <h4 class="font-bold text-indigo-400 text-sm">Tampilan, Logo & Video Latar Belakang</h4>
+                            <div>
+                                <label class="block text-slate-300 mb-1">Nama Aplikasi / Website</label>
+                                <input type="text" id="set-app-name" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white">
+                            </div>
+                            <div>
+                                <label class="block text-slate-300 mb-1">Upload Logo Aplikasi</label>
+                                <input type="file" id="set-app-logo" accept="image/*" class="w-full text-slate-400">
+                            </div>
+                            <div>
+                                <label class="block text-slate-300 mb-1">Upload Video Latar Belakang (MP4/WebM - Terang & Jelas)</label>
+                                <input type="file" id="set-bg-video" accept="video/*" class="w-full text-slate-400">
+                                <p class="text-[11px] text-slate-400 mt-1">Atau masukkan URL Video MP4 langsung:</p>
+                                <input type="text" id="set-bg-video-url" placeholder="https://..." class="w-full px-3 py-1.5 mt-1 bg-slate-900 border border-slate-600 rounded-lg text-white">
+                            </div>
+                            <div>
+                                <label class="block text-slate-300 mb-1">Upload Gambar QRIS Utama Pembayaran</label>
+                                <input type="file" id="set-admin-qris" accept="image/*" class="w-full text-slate-400">
+                                <div id="current-admin-qris-preview" class="mt-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- Jam Operasional & Pajak -->
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
+                            <h4 class="font-bold text-rose-400 text-sm">Jam Operasional, Penutupan & Pajak</h4>
+                            <div class="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-700">
+                                <div>
+                                    <div class="font-bold text-white">Tutup Website Paksa Sekarang</div>
+                                    <div class="text-slate-400 text-[11px]">Hanya Admin yang dapat masuk saat ditutup.</div>
+                                </div>
+                                <input type="checkbox" id="set-force-closed" class="w-5 h-5 accent-rose-600">
+                            </div>
+
+                            <div class="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-700">
+                                <div>
+                                    <div class="font-bold text-white">Buka 24 Jam Nonstop</div>
+                                    <div class="text-slate-400 text-[11px]">Abaikan jadwal buka/tutup otomatis.</div>
+                                </div>
+                                <input type="checkbox" id="set-open-24h" checked class="w-5 h-5 accent-emerald-500">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-slate-300 mb-1">Jam Buka (Contoh: 06:00)</label>
+                                    <input type="time" id="set-open-time" value="06:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-300 mb-1">Jam Tutup (Contoh: 21:00)</label>
+                                    <input type="time" id="set-close-time" value="21:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-slate-300 mb-1">Pajak Transaksi untuk Admin (Rupiah)</label>
+                                <input type="number" id="set-admin-tax" value="200" min="0" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white">
+                            </div>
+
+                            <button onclick="saveAdminSettings()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow">
+                                <i class="fas fa-save mr-1.5"></i> Simpan Semua Pengaturan
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TAB ADMIN 5: KODE REDEEM, DISKON & PAPAN INFORMASI -->
+                    <div id="admin-tab-promo-redeem" class="admin-tab-content hidden grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                        <!-- Diskon & Papan Informasi -->
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
+                            <h4 class="font-bold text-amber-400 text-sm">Diskon Hari Ini & Papan Informasi</h4>
+                            <div>
+                                <label class="block text-slate-300 mb-1">Diskon Otomatis Hari Ini (%)</label>
+                                <input type="number" id="set-daily-discount" min="0" max="100" value="0" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white">
+                            </div>
+                            <div>
+                                <label class="block text-slate-300 mb-1">Pengumuman Papan Informasi (Termasuk info Redeem Code)</label>
+                                <textarea id="set-info-board" rows="4" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white"></textarea>
+                            </div>
+                            <button onclick="saveInfoAndDiscount()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl">
+                                Perbarui Papan Informasi & Diskon
+                            </button>
+                        </div>
+
+                        <!-- Tambah Redeem Code -->
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
+                            <h4 class="font-bold text-emerald-400 text-sm">Buat Kode Redeem Hadiah Saldo</h4>
+                            <form onsubmit="handleCreateRedeemCode(event)" class="space-y-3">
+                                <div>
+                                    <label class="block text-slate-300 mb-1">Kode Redeem</label>
+                                    <input type="text" id="new-redeem-code" required placeholder="Contoh: BERKAH2026" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white uppercase">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-300 mb-1">Hadiah Saldo (Rupiah)</label>
+                                    <input type="number" id="new-redeem-amount" required min="100" placeholder="Contoh: 5000" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white">
+                                </div>
+                                <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl">
+                                    + Tambahkan Kode Redeem
+                                </button>
+                            </form>
+                            <div class="border-t border-slate-700 pt-3">
+                                <div class="font-semibold text-slate-300 mb-2">Daftar Kode Redeem Aktif:</div>
+                                <div id="admin-redeem-list" class="space-y-1.5 max-h-40 overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== MODAL-MODAL INTERAKTIF ==================== -->
+
+    <!-- 1. Modal Deposit QRIS -->
+    <div id="deposit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-extrabold text-slate-900"><i class="fas fa-qrcode text-indigo-600 mr-2"></i>Deposit Saldo via QRIS</h3>
+                <button onclick="closeModal('deposit-modal')" class="text-slate-400 hover:text-slate-700"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Step 1: Masukkan Nominal -->
+            <div id="deposit-step-1" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mau Deposit Berapa? (Min Rp 1.000)</label>
+                    <input type="number" id="deposit-amount-input" min="1000" value="10000" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-lg font-bold text-indigo-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" onclick="document.getElementById('deposit-amount-input').value=10000" class="py-1.5 bg-slate-100 hover:bg-indigo-50 text-xs font-bold rounded-lg border">Rp 10.000</button>
+                    <button type="button" onclick="document.getElementById('deposit-amount-input').value=25000" class="py-1.5 bg-slate-100 hover:bg-indigo-50 text-xs font-bold rounded-lg border">Rp 25.000</button>
+                    <button type="button" onclick="document.getElementById('deposit-amount-input').value=50000" class="py-1.5 bg-slate-100 hover:bg-indigo-50 text-xs font-bold rounded-lg border">Rp 50.000</button>
+                </div>
+                <button onclick="proceedToQrisStep()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow">
+                    Lanjut ke Pembayaran QRIS <i class="fas fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+
+            <!-- Step 2: Scan QRIS & Upload Bukti -->
+            <div id="deposit-step-2" class="hidden space-y-4 text-center">
+                <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                    <div class="text-xs text-slate-500">Total Transfer QRIS</div>
+                    <div id="qris-pay-amount-display" class="text-2xl font-extrabold text-indigo-700">Rp 10.000</div>
+                </div>
+                <div class="bg-white p-3 border-2 border-dashed border-slate-300 rounded-2xl inline-block">
+                    <img id="deposit-qris-image" src="https://placehold.co/240x240/ffffff/1e293b?text=QRIS+ADMIN" alt="QRIS Pembayaran" class="w-52 h-52 object-contain mx-auto rounded-lg">
+                </div>
+                <div class="text-left">
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Upload Bukti Transaksi (Screenshot)</label>
+                    <input type="file" id="deposit-proof-file" accept="image/*" class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-semibold file:bg-indigo-50 file:text-indigo-700">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="resetDepositModal()" class="w-1/3 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">Kembali</button>
+                    <button onclick="submitDepositProof()" class="w-2/3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow">
+                        Kirim & Cek Otomatis
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Modal Daftar Agen -->
+    <div id="apply-agent-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 fade-in">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-extrabold text-slate-900"><i class="fas fa-check-circle text-sky-500 mr-1.5"></i>Daftar Menjadi Agen</h3>
+                <button onclick="closeModal('apply-agent-modal')" class="text-slate-400 hover:text-slate-700"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">Lengkapi persyaratan di bawah ini untuk mendapatkan centang biru dan hak berjualan file.</p>
+            <form onsubmit="handleApplyAgent(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Nama Lengkap</label>
+                    <input type="text" id="agent-fullname" required class="w-full px-3.5 py-2 border border-slate-300 rounded-xl">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">E-Mail Aktif</label>
+                    <input type="email" id="agent-email" required class="w-full px-3.5 py-2 border border-slate-300 rounded-xl">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Alamat Lengkap</label>
+                    <textarea id="agent-address" rows="2" required class="w-full px-3.5 py-2 border border-slate-300 rounded-xl"></textarea>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Sertifikat Perizinan oleh Admin (Upload File)</label>
+                    <input type="file" id="agent-certificate-file" required class="w-full text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:font-semibold file:bg-sky-50 file:text-sky-700">
+                </div>
+                <button type="submit" class="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl shadow mt-2">
+                    Kirim Pendaftaran Agen
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. Modal Kode Redeem -->
+    <div id="redeem-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 fade-in">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-extrabold text-slate-900"><i class="fas fa-ticket-alt text-amber-500 mr-2"></i>Klaim Kode Redeem</h3>
+                <button onclick="closeModal('redeem-modal')" class="text-slate-400 hover:text-slate-700"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">Masukkan kode redeem dari papan informasi untuk mendapatkan saldo gratis.</p>
+            <form onsubmit="handleClaimRedeem(event)" class="space-y-4">
+                <input type="text" id="redeem-code-input" required placeholder="MASUKKAN KODE" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-center font-extrabold uppercase tracking-widest text-indigo-700">
+                <button type="submit" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow">
+                    Tukarkan Kode
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. Modal Promosi Saluran WhatsApp -->
+    <div id="promo-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 fade-in">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-extrabold text-slate-900"><i class="fab fa-whatsapp text-emerald-500 mr-2"></i>Promosi Saluran WhatsApp</h3>
+                <button onclick="closeModal('promo-modal')" class="text-slate-400 hover:text-slate-700"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="promo-fee-notice" class="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3 rounded-xl mb-4">
+                Biaya promosi saluran WhatsApp adalah <strong>Rp 1.000</strong> (dipotong otomatis dari saldo Anda dan masuk ke Admin).
+            </div>
+            <form onsubmit="handleCreateWaPromo(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Nama Saluran WhatsApp</label>
+                    <input type="text" id="promo-wa-title" required placeholder="Contoh: Info Script & Mod Gratis" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Link Saluran WhatsApp</label>
+                    <input type="url" id="promo-wa-link" required placeholder="https://whatsapp.com/channel/..." class="w-full px-3.5 py-2 border border-slate-300 rounded-xl">
+                </div>
+                <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow">
+                    Bayar & Pasang Promosi
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 5. Modal Detail File, Ulasan & Rating -->
+    <div id="file-detail-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto fade-in">
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <h3 id="detail-file-title" class="text-xl font-extrabold text-slate-900">Judul File</h3>
+                    <p id="detail-file-seller" class="text-xs text-slate-500 mt-0.5">Oleh Penjual</p>
+                </div>
+                <button onclick="closeModal('file-detail-modal')" class="text-slate-400 hover:text-slate-700"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <p id="detail-file-desc" class="text-sm text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-4"></p>
+
+            <!-- Form Rating & Komentar (Hanya muncul jika user sudah membeli file ini) -->
+            <div id="detail-review-form-box" class="hidden bg-indigo-50/70 border border-indigo-100 p-4 rounded-2xl mb-4">
+                <h4 class="text-xs font-bold text-indigo-900 uppercase mb-2">Beri Rating & Komentar Pembeli</h4>
+                <form onsubmit="handleSubmitReview(event)" class="space-y-2.5">
+                    <input type="hidden" id="review-target-file-id">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-slate-700">Rating:</span>
+                        <select id="review-rating-select" class="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold text-amber-600">
+                            <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+                            <option value="4">⭐⭐⭐⭐ (4/5)</option>
+                            <option value="3">⭐⭐⭐ (3/5)</option>
+                            <option value="2">⭐⭐ (2/5)</option>
+                            <option value="1">⭐ (1/5)</option>
+                        </select>
+                    </div>
+                    <textarea id="review-comment-input" rows="2" required placeholder="Tulis pengalaman Anda menggunakan file ini..." class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs"></textarea>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl">Kirim Ulasan</button>
+                </form>
+            </div>
+
+            <!-- Daftar Komentar & Rating Pelanggan Lain -->
+            <div>
+                <h4 class="text-xs font-bold text-slate-700 uppercase mb-2">Ulasan & Rating Pembeli</h4>
+                <div id="detail-reviews-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== FIREBASE & LOGIKA SISTEM ==================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Konfigurasi Firebase yang diberikan pengguna + dukungan environment
+        const userProvidedConfig = {
+            apiKey: "AIzaSyDHTAnQZs2VWYgITU9UYPLRq7lAqspSzSI",
+            authDomain: "marketplace-c7f33.firebaseapp.com",
+            projectId: "marketplace-c7f33",
+            storageBucket: "marketplace-c7f33.firebasestorage.app",
+            messagingSenderId: "502209874538",
+            appId: "1:502209874538:web:33629424efb1e22a231813"
+        };
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userProvidedConfig;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'marketplace-c7f33';
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State Global Aplikasi
+        let currentUser = null; // { id, username, password, age, role, isAgent, balance, blocked, blockReason, blockDocData, ... }
+        let isAdminSession = false;
+        let allUsers = [];
+        let allFiles = [];
+        let allDeposits = [];
+        let allRedeemCodes = [];
+        let allPromos = [];
+        let systemSettings = {
+            appName: 'FZZ File Market',
+            appLogo: 'https://placehold.co/80x80/4f46e5/ffffff?text=FM',
+            bgVideoUrl: '',
+            adminQris: 'https://placehold.co/250x250/ffffff/1e293b?text=QRIS+PEMBAYARAN',
+            forceClosed: false,
+            open24h: true,
+            openTime: '06:00',
+            closeTime: '21:00',
+            dailyDiscount: 0,
+            adminTax: 200,
+            infoBoard: 'Selamat datang! Gunakan kode redeem jika tersedia pada papan informasi ini.',
+            adminRevenue: 0
+        };
+
+        // Helper Path Firestore Sesuai Aturan Wajib
+        const getPublicCol = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
+        const getPublicDoc = (colName, docId) => doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
+
+        // Fungsi Utilitas Format Rupiah
+        window.formatRupiah = (angka) => {
+            return 'Rp ' + Number(angka || 0).toLocaleString('id-ID');
+        };
+
+        // Notifikasi Toast
+        window.showToast = (msg, type = 'info') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-rose-600 text-white',
+                warning: 'bg-amber-500 text-white',
+                info: 'bg-slate-800 text-white'
+            };
+            toast.className = `${colors[type] || colors.info} px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center justify-between gap-3 pointer-events-auto fade-in`;
+            toast.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()" class="opacity-75 hover:opacity-100"><i class="fas fa-times"></i></button>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4500);
+        };
+
+        // Konversi File ke DataURL (untuk gambar kecil, QRIS, dokumen surat, atau file download)
+        const fileToDataURL = (file, maxSizeMB = 0.85) => {
+            return new Promise((resolve, reject) => {
+                if (!file) return resolve(null);
+                if (file.size > maxSizeMB * 1024 * 1024) {
+                    // Jika file terlalu besar untuk dokumen database langsung, simpan metadata & konten simulasi/ringkas
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        // Potong jika melebihi batas 850KB agar aman disimpan di database
+                        const res = reader.result;
+                        if (res.length > 850000) {
+                            resolve(res.substring(0, 850000));
+                        } else {
+                            resolve(res);
+                        }
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                }
+            });
+        };
+
+        // Shortcut Rahasia Ctrl + F + Z untuk Memunculkan Panel Login Admin
+        const pressedKeys = new Set();
+        window.addEventListener('keydown', (e) => {
+            pressedKeys.add(e.key.toLowerCase());
+            if (e.ctrlKey && pressedKeys.has('f') && pressedKeys.has('z')) {
+                e.preventDefault();
+                pressedKeys.clear();
+                document.getElementById('admin-login-modal').classList.remove('hidden');
+                document.getElementById('admin-login-user').focus();
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            pressedKeys.delete(e.key.toLowerCase());
+        });
+
+        // Inisialisasi Autentikasi Firebase & Listener Real-time
+        async function initSystem() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth init error:", err);
+            }
+
+            // Pastikan dokumen pengaturan sistem ada
+            const settingsRef = getPublicDoc('settings', 'main');
+            const snap = await getDoc(settingsRef);
+            if (!snap.exists()) {
+                await setDoc(settingsRef, systemSettings);
+            }
+
+            // Listener Real-time Pengaturan Sistem
+            onSnapshot(settingsRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    systemSettings = { ...systemSettings, ...docSnap.data() };
+                    applySystemSettingsUI();
+                    checkStoreScheduleAndAccess();
+                }
+            }, (err) => console.error("Settings listener error:", err));
+
+            // Listener Real-time Pengguna
+            onSnapshot(getPublicCol('users'), (snapshot) => {
+                allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (currentUser && !isAdminSession) {
+                    const updated = allUsers.find(u => u.id === currentUser.id);
+                    if (!updated) {
+                        // Akun dihapus oleh admin
+                        showToast("Akun Anda telah dihapus oleh Admin.", "error");
+                        handleLogout();
+                        return;
+                    }
+                    if (updated.blocked) {
+                        showBlockedAlert(updated);
+                        handleLogout();
+                        return;
+                    }
+                    currentUser = updated;
+                    updateNavbarUserUI();
+                }
+                if (isAdminSession) renderAdminUsers();
+            }, (err) => console.error("Users listener error:", err));
+
+            // Listener Real-time Katalog File
+            onSnapshot(getPublicCol('files'), (snapshot) => {
+                allFiles = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderMarketplaceFiles();
+                renderPurchasedFiles();
+                renderAgentMyFiles();
+                if (isAdminSession) renderAdminFilesAudit();
+            }, (err) => console.error("Files listener error:", err));
+
+            // Listener Real-time Deposit
+            onSnapshot(getPublicCol('deposits'), (snapshot) => {
+                allDeposits = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (isAdminSession) renderAdminDeposits();
+            }, (err) => console.error("Deposits listener error:", err));
+
+            // Listener Real-time Kode Redeem
+            onSnapshot(getPublicCol('redeem_codes'), (snapshot) => {
+                allRedeemCodes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (isAdminSession) renderAdminRedeemList();
+            }, (err) => console.error("Redeem listener error:", err));
+
+            // Listener Real-time Promosi WhatsApp
+            onSnapshot(getPublicCol('wa_promos'), (snapshot) => {
+                allPromos = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderWaPromos();
+            }, (err) => console.error("Promo listener error:", err));
+
+            // Cek jadwal buka/tutup setiap 15 detik
+            setInterval(checkStoreScheduleAndAccess, 15000);
+        }
+
+        // Terapkan Pengaturan Tampilan ke UI
+        function applySystemSettingsUI() {
+            document.title = systemSettings.appName;
+            document.getElementById('auth-app-name').textContent = systemSettings.appName;
+            document.getElementById('nav-app-name').textContent = systemSettings.appName;
+
+            if (systemSettings.appLogo) {
+                document.getElementById('auth-app-logo').src = systemSettings.appLogo;
+                document.getElementById('nav-app-logo').src = systemSettings.appLogo;
+            }
+
+            // Video Latar Belakang Terang & Terlihat
+            const videoEl = document.getElementById('bg-video');
+            if (systemSettings.bgVideoUrl && videoEl.getAttribute('data-src') !== systemSettings.bgVideoUrl) {
+                videoEl.src = systemSettings.bgVideoUrl;
+                videoEl.setAttribute('data-src', systemSettings.bgVideoUrl);
+                videoEl.load();
+                videoEl.play().catch(() => {});
+            }
+
+            // Diskon Hari Ini
+            const discBadge = document.getElementById('info-discount-badge');
+            if (Number(systemSettings.dailyDiscount) > 0) {
+                discBadge.textContent = `DISKON ${systemSettings.dailyDiscount}% HARI INI!`;
+                discBadge.classList.remove('hidden');
+            } else {
+                discBadge.classList.add('hidden');
+            }
+
+            // Pajak & Papan Informasi
+            document.getElementById('info-tax-display').textContent = formatRupiah(systemSettings.adminTax);
+            document.getElementById('info-board-text').textContent = systemSettings.infoBoard || '';
+            document.getElementById('deposit-qris-image').src = systemSettings.adminQris || 'https://placehold.co/240x240/ffffff/1e293b?text=QRIS+ADMIN';
+
+            // Jam Operasional Text
+            const hoursText = systemSettings.open24h ? '24 Jam Nonstop' : `${systemSettings.openTime} - ${systemSettings.closeTime}`;
+            document.getElementById('info-hours-text').textContent = hoursText;
+            document.getElementById('closed-schedule-display').textContent = hoursText;
+
+            // Isi form pengaturan admin jika sedang terbuka
+            if (isAdminSession) {
+                document.getElementById('admin-revenue-display').textContent = formatRupiah(systemSettings.adminRevenue);
+                document.getElementById('set-app-name').value = systemSettings.appName;
+                document.getElementById('set-force-closed').checked = !!systemSettings.forceClosed;
+                document.getElementById('set-open-24h').checked = !!systemSettings.open24h;
+                document.getElementById('set-open-time').value = systemSettings.openTime || '06:00';
+                document.getElementById('set-close-time').value = systemSettings.closeTime || '21:00';
+                document.getElementById('set-admin-tax').value = systemSettings.adminTax || 0;
+                document.getElementById('set-daily-discount').value = systemSettings.dailyDiscount || 0;
+                document.getElementById('set-info-board').value = systemSettings.infoBoard || '';
+                if (systemSettings.adminQris) {
+                    document.getElementById('current-admin-qris-preview').innerHTML = `<img src="${systemSettings.adminQris}" class="w-24 h-24 rounded-lg border border-slate-600 object-contain bg-white">`;
+                }
+            }
+        }
+
+        // Cek Apakah Website Sedang Buka atau Tutup
+        function isStoreCurrentlyOpen() {
+            if (systemSettings.forceClosed) return false;
+            if (systemSettings.open24h) return true;
+
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+            const [openH, openM] = (systemSettings.openTime || '06:00').split(':').map(Number);
+            const [closeH, closeM] = (systemSettings.closeTime || '21:00').split(':').map(Number);
+            const openMinutes = openH * 60 + openM;
+            const closeMinutes = closeH * 60 + closeM;
+
+            if (openMinutes <= closeMinutes) {
+                return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+            } else {
+                // Melewati tengah malam (misal buka 21:00 tutup 06:00)
+                return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
+            }
+        }
+
+        function checkStoreScheduleAndAccess() {
+            const isOpen = isStoreCurrentlyOpen();
+            const closedScreen = document.getElementById('closed-screen');
+            const navStatus = document.getElementById('nav-store-status');
+
+            if (isOpen) {
+                closedScreen.classList.add('hidden');
+                navStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Buka`;
+                navStatus.className = "text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5";
+            } else {
+                navStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span> Tutup`;
+                navStatus.className = "text-[11px] font-semibold text-rose-600 flex items-center gap-1 mt-0.5";
+
+                // Jika Admin sedang login, tetap diizinkan masuk
+                if (isAdminSession) {
+                    closedScreen.classList.add('hidden');
+                } else {
+                    // Pelanggan & Agen tidak bisa masuk saat tutup
+                    if (currentUser) {
+                        handleLogout();
+                    }
+                    closedScreen.classList.remove('hidden');
+                }
+            }
+        }
+
+        // ==================== OTENTIKASI PELANGGAN, AGEN & ADMIN ====================
+        window.switchAuthTab = (tab) => {
+            const loginForm = document.getElementById('login-form');
+            const regForm = document.getElementById('register-form');
+            const btnLogin = document.getElementById('tab-login-btn');
+            const btnReg = document.getElementById('tab-register-btn');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+                btnLogin.className = "py-2 text-sm font-semibold rounded-lg bg-white text-indigo-600 shadow-sm transition";
+                btnReg.className = "py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition";
+            } else {
+                loginForm.classList.add('hidden');
+                regForm.classList.remove('hidden');
+                btnReg.className = "py-2 text-sm font-semibold rounded-lg bg-white text-emerald-600 shadow-sm transition";
+                btnLogin.className = "py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition";
+            }
+        };
+
+        window.handleRegister = async (e) => {
+            e.preventDefault();
+            if (!isStoreCurrentlyOpen()) {
+                showToast("Website sedang tutup. Pendaftaran tidak tersedia.", "error");
+                return;
+            }
+            const username = document.getElementById('reg-username').value.trim();
+            const password = document.getElementById('reg-password').value.trim();
+            const age = Number(document.getElementById('reg-age').value);
+
+            if (username.toUpperCase() === 'FZZ') {
+                showToast("Username tidak tersedia.", "error");
+                return;
+            }
+
+            const exists = allUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+            if (exists) {
+                showToast("Username sudah digunakan! Pilih username lain.", "error");
+                return;
+            }
+
+            try {
+                const newUser = {
+                    username,
+                    password,
+                    age,
+                    role: 'customer',
+                    isAgent: false,
+                    agentStatus: 'none', // none | pending | approved
+                    balance: 0,
+                    blocked: false,
+                    purchasedFiles: [],
+                    createdAt: Date.now()
+                };
+                const docRef = await addDoc(getPublicCol('users'), newUser);
+                currentUser = { id: docRef.id, ...newUser };
+                isAdminSession = false;
+                enterMainApp();
+                showToast("Pendaftaran berhasil! Selamat datang.", "success");
+            } catch (err) {
+                showToast("Gagal mendaftar: " + err.message, "error");
+            }
+        };
+
+        window.handleLogin = async (e) => {
+            e.preventDefault();
+            if (!isStoreCurrentlyOpen()) {
+                showToast("Website sedang tutup. Hanya Admin yang dapat login.", "error");
+                return;
+            }
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+
+            const found = allUsers.find(u => u.username === username && u.password === password);
+            if (!found) {
+                showToast("Username atau password salah!", "error");
+                return;
+            }
+            if (found.blocked) {
+                showBlockedAlert(found);
+                return;
+            }
+
+            currentUser = found;
+            isAdminSession = false;
+            enterMainApp();
+            showToast(`Selamat datang kembali, ${found.username}!`, "success");
+        };
+
+        // Login Admin Rahasia (Ctrl+F+Z)
+        window.handleAdminLogin = (e) => {
+            e.preventDefault();
+            const u = document.getElementById('admin-login-user').value.trim();
+            const p = document.getElementById('admin-login-pass').value.trim();
+
+            if (u === 'FZZ' && p === '110616') {
+                isAdminSession = true;
+                currentUser = {
+                    id: 'ADMIN_FZZ',
+                    username: 'FZZ',
+                    role: 'admin',
+                    isAgent: true,
+                    balance: systemSettings.adminRevenue || 0,
+                    purchasedFiles: []
+                };
+                closeModal('admin-login-modal');
+                document.getElementById('admin-login-user').value = '';
+                document.getElementById('admin-login-pass').value = '';
+                enterMainApp();
+                switchMainSection('admin-panel');
+                showToast("Login Administrator Berhasil.", "success");
+            } else {
+                showToast("Kredensial Admin tidak valid!", "error");
+            }
+        };
+
+        function showBlockedAlert(user) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').innerHTML = `<span class="text-rose-600"><i class="fas fa-ban mr-2"></i>Akun Anda Diblokir</span>`;
+            let docLink = '';
+            if (user.blockDocData) {
+                docLink = `<a href="${user.blockDocData}" download="${user.blockDocName || 'Surat_Pemblokiran.pdf'}" class="inline-block mt-2 px-3 py-1.5 bg-rose-100 text-rose-700 font-bold rounded-lg text-xs"><i class="fas fa-file-download mr-1"></i> Unduh Surat Pemblokiran Akun</a>`;
+            }
+            document.getElementById('modal-body').innerHTML = `
+                <p>Akun <strong>${user.username}</strong> telah diblokir oleh Admin.</p>
+                <p class="bg-rose-50 p-3 rounded-xl border border-rose-200 text-rose-800 text-xs"><strong>Alasan:</strong> ${user.blockReason || 'Pelanggaran ketentuan layanan.'}</p>
+                ${docLink}
+            `;
+            document.getElementById('modal-actions').innerHTML = `<button onclick="closeModal('custom-modal')" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold">Tutup</button>`;
+            modal.classList.remove('hidden');
+        }
+
+        function enterMainApp() {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('closed-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            updateNavbarUserUI();
+            renderMarketplaceFiles();
+            renderPurchasedFiles();
+            renderAgentMyFiles();
+            renderWaPromos();
+            if (isAdminSession) {
+                renderAdminUsers();
+                renderAdminDeposits();
+                renderAdminFilesAudit();
+                renderAdminRedeemList();
+            }
+        }
+
+        window.handleLogout = () => {
+            currentUser = null;
+            isAdminSession = false;
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+            checkStoreScheduleAndAccess();
+        };
+
+        function updateNavbarUserUI() {
+            if (!currentUser) return;
+            document.getElementById('nav-username').textContent = currentUser.username;
+
+            const blueTick = document.getElementById('nav-blue-tick');
+            const adminBadge = document.getElementById('nav-admin-badge');
+            const roleText = document.getElementById('nav-user-role');
+            const btnApplyAgent = document.getElementById('nav-btn-apply-agent');
+            const btnAgentPanel = document.getElementById('nav-btn-agent-panel');
+            const btnAdminPanel = document.getElementById('nav-btn-admin-panel');
+
+            if (isAdminSession) {
+                document.getElementById('nav-user-balance').textContent = formatRupiah(systemSettings.adminRevenue);
+                blueTick.classList.remove('hidden');
+                adminBadge.classList.remove('hidden');
+                roleText.textContent = 'Administrator';
+                btnApplyAgent.classList.add('hidden');
+                btnAgentPanel.classList.remove('hidden');
+                btnAdminPanel.classList.remove('hidden');
+            } else {
+                document.getElementById('nav-user-balance').textContent = formatRupiah(currentUser.balance);
+                adminBadge.classList.add('hidden');
+                btnAdminPanel.classList.add('hidden');
+
+                if (currentUser.isAgent) {
+                    blueTick.classList.remove('hidden');
+                    roleText.textContent = 'Agen Terverifikasi';
+                    btnApplyAgent.classList.add('hidden');
+                    btnAgentPanel.classList.remove('hidden');
+                } else {
+                    blueTick.classList.add('hidden');
+                    roleText.textContent = currentUser.agentStatus === 'pending' ? 'Pelanggan (Menunggu Verifikasi Agen)' : 'Pelanggan';
+                    btnApplyAgent.classList.remove('hidden');
+                    btnAgentPanel.classList.add('hidden');
+                }
+            }
+        }
+
+        window.switchMainSection = (secName) => {
+            ['marketplace', 'my-purchases', 'agent-panel', 'admin-panel'].forEach(s => {
+                document.getElementById(`section-${s}`).classList.add('hidden');
+            });
+            document.getElementById(`section-${secName}`).classList.remove('hidden');
+        };
+
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+        };
+
+        // ==================== DEPOSIT QRIS OTOMATIS & PENDING ADMIN ====================
+        window.openDepositModal = () => {
+            if (isAdminSession) {
+                showToast("Admin tidak perlu melakukan deposit.", "info");
+                return;
+            }
+            resetDepositModal();
+            document.getElementById('deposit-modal').classList.remove('hidden');
+        };
+
+        window.resetDepositModal = () => {
+            document.getElementById('deposit-step-1').classList.remove('hidden');
+            document.getElementById('deposit-step-2').classList.add('hidden');
+            document.getElementById('deposit-proof-file').value = '';
+        };
+
+        window.proceedToQrisStep = () => {
+            const amount = Number(document.getElementById('deposit-amount-input').value);
+            if (!amount || amount < 1000) {
+                showToast("Minimal deposit adalah Rp 1.000", "warning");
+                return;
+            }
+            document.getElementById('qris-pay-amount-display').textContent = formatRupiah(amount);
+            document.getElementById('deposit-step-1').classList.add('hidden');
+            document.getElementById('deposit-step-2').classList.remove('hidden');
+        };
+
+        window.submitDepositProof = async () => {
+            const amount = Number(document.getElementById('deposit-amount-input').value);
+            const fileInput = document.getElementById('deposit-proof-file');
+            if (!fileInput.files || !fileInput.files[0]) {
+                showToast("Harap upload file bukti transaksi QRIS!", "warning");
+                return;
+            }
+
+            try {
+                showToast("Sistem sedang memeriksa bukti transaksi secara otomatis...", "info");
+                const proofData = await fileToDataURL(fileInput.files[0], 0.6);
+
+                await addDoc(getPublicCol('deposits'), {
+                    userId: currentUser.id,
+                    username: currentUser.username,
+                    amount: amount,
+                    proofData: proofData,
+                    autoCheckStatus: 'Terverifikasi Sistem (Valid Format & Nominal)',
+                    status: 'pending', // Menunggu persetujuan Admin
+                    createdAt: Date.now()
+                });
+
+                closeModal('deposit-modal');
+                showToast("Bukti transaksi lolos pengecekan sistem! Status: Pending menunggu persetujuan Admin.", "success");
+            } catch (err) {
+                showToast("Gagal mengirim bukti deposit: " + err.message, "error");
+            }
+        };
+
+        // ==================== PENDAFTARAN AGEN ====================
+        window.openApplyAgentModal = () => {
+            if (currentUser.agentStatus === 'pending') {
+                showToast("Pendaftaran agen Anda sedang dalam proses pengecekan oleh Admin. Cek centang biru secara berkala.", "info");
+                return;
+            }
+            document.getElementById('apply-agent-modal').classList.remove('hidden');
+        };
+
+        window.handleApplyAgent = async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('agent-fullname').value.trim();
+            const email = document.getElementById('agent-email').value.trim();
+            const address = document.getElementById('agent-address').value.trim();
+            const certFile = document.getElementById('agent-certificate-file').files[0];
+
+            if (!certFile) {
+                showToast("Wajib mengunggah sertifikat perizinan!", "warning");
+                return;
+            }
+
+            try {
+                const certData = await fileToDataURL(certFile, 0.7);
+                await updateDoc(getPublicDoc('users', currentUser.id), {
+                    agentStatus: 'pending',
+                    agentApplication: {
+                        fullName,
+                        email,
+                        address,
+                        certName: certFile.name,
+                        certData,
+                        appliedAt: Date.now()
+                    }
+                });
+                closeModal('apply-agent-modal');
+                showToast("Pendaftaran berhasil! Anda akan diproses pengecekan oleh Admin. Jika disetujui, centang biru akan muncul di akun Anda.", "success");
+            } catch (err) {
+                showToast("Gagal mengajukan agen: " + err.message, "error");
+            }
+        };
+
+        // ==================== PENJUALAN FILE OLEH AGEN & ADMIN ====================
+        window.handleUploadSaleFile = async (e) => {
+            e.preventDefault();
+            if (!isAdminSession && !currentUser.isAgent) {
+                showToast("Hanya Agen terverifikasi dan Admin yang dapat menjual file!", "error");
+                return;
+            }
+
+            const title = document.getElementById('sale-file-title').value.trim();
+            const price = Number(document.getElementById('sale-file-price').value);
+            const desc = document.getElementById('sale-file-desc').value.trim();
+            const productFile = document.getElementById('sale-file-upload').files[0];
+            const qrisFile = document.getElementById('sale-agent-qris').files[0];
+
+            if (!productFile || !qrisFile) {
+                showToast("Harap upload file produk dan gambar QRIS penerima!", "warning");
+                return;
+            }
+
+            try {
+                const fileData = await fileToDataURL(productFile, 0.75);
+                const qrisData = await fileToDataURL(qrisFile, 0.5);
+
+                // Jika Admin yang menjual, langsung approved tanpa tes malware. Jika Agen, status pending_malware_test
+                const initialStatus = isAdminSession ? 'approved' : 'pending_malware_test';
+
+                await addDoc(getPublicCol('files'), {
+                    title,
+                    price,
+                    description: desc,
+                    fileName: productFile.name,
+                    fileData,
+                    sellerQris: qrisData,
+                    sellerId: currentUser.id,
+                    sellerUsername: currentUser.username,
+                    sellerIsAdmin: isAdminSession,
+                    status: initialStatus,
+                    views: 0,
+                    salesCount: 0,
+                    reviews: [],
+                    createdAt: Date.now()
+                });
+
+                e.target.reset();
+                if (isAdminSession) {
+                    showToast("File Admin langsung diterbitkan ke katalog tanpa perlu uji malware!", "success");
+                } else {
+                    showToast("File diunggah! Menunggu tes uji bebas malware oleh Admin sebelum tampil di katalog.", "info");
+                }
+            } catch (err) {
+                showToast("Gagal mengunggah file: " + err.message, "error");
+            }
+        };
+
+        // ==================== KATALOG FILE, HITUNG VIEW, DISKON, PAJAK & PEMBELIAN ====================
+        window.renderMarketplaceFiles = () => {
+            const grid = document.getElementById('marketplace-grid');
+            const keyword = (document.getElementById('search-file-input')?.value || '').toLowerCase();
+            const approvedFiles = allFiles.filter(f => f.status === 'approved' && (
+                f.title.toLowerCase().includes(keyword) || f.sellerUsername.toLowerCase().includes(keyword)
+            ));
+
+            if (approvedFiles.length === 0) {
+                grid.innerHTML = `<div class="col-span-full glass-card rounded-2xl p-8 text-center text-slate-500 text-sm">Belum ada file yang tersedia di katalog saat ini.</div>`;
+                return;
+            }
+
+            const discountPct = Number(systemSettings.dailyDiscount || 0);
+            const taxAmount = Number(systemSettings.adminTax || 0);
+
+            grid.innerHTML = approvedFiles.map(file => {
+                const discountedPrice = Math.max(0, Math.round(file.price - (file.price * discountPct / 100)));
+                const totalPay = discountedPrice + taxAmount;
+                const reviews = file.reviews || [];
+                const avgRating = reviews.length > 0 ? (reviews.reduce((a, b) => a + Number(b.rating), 0) / reviews.length).toFixed(1) : 'Baru';
+                const alreadyOwned = (currentUser?.purchasedFiles || []).includes(file.id) || file.sellerId === currentUser?.id || isAdminSession;
+
+                return `
+                <div class="glass-card rounded-2xl p-5 shadow-md hover:shadow-xl transition flex flex-col justify-between border border-white/80">
+                    <div>
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[11px] font-bold rounded-lg flex items-center gap-1">
+                                <i class="fas fa-file-archive"></i> ${file.fileName}
+                            </span>
+                            <span class="text-xs font-bold text-amber-500 flex items-center gap-1">
+                                <i class="fas fa-star"></i> ${avgRating} (${reviews.length})
+                            </span>
+                        </div>
+
+                        <h3 class="text-base font-extrabold text-slate-900 line-clamp-1">${file.title}</h3>
+                        <div class="text-xs text-slate-500 flex items-center gap-1.5 mt-1 mb-3">
+                            <span>Penjual: <strong>${file.sellerUsername}</strong></span>
+                            <i class="fas fa-check-circle text-sky-500" title="Terverifikasi"></i>
+                            <span class="mx-1">•</span>
+                            <span><i class="far fa-eye"></i> ${file.views || 0}x dilihat</span>
+                        </div>
+
+                        <p class="text-xs text-slate-600 line-clamp-2 mb-4">${file.description}</p>
+                    </div>
+
+                    <div class="border-t border-slate-200/70 pt-3 space-y-3">
+                        <div class="flex justify-between items-end">
+                            <div>
+                                ${discountPct > 0 ? `<div class="text-[11px] text-slate-400 line-through">${formatRupiah(file.price)}</div>` : ''}
+                                <div class="text-lg font-extrabold text-indigo-700">${formatRupiah(discountedPrice)}</div>
+                                <div class="text-[10px] text-slate-500">+ Pajak Admin ${formatRupiah(taxAmount)} = <strong>${formatRupiah(totalPay)}</strong></div>
+                            </div>
+                            <button onclick="openFileDetailModal('${file.id}')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
+                                Detail & Ulasan
+                            </button>
+                        </div>
+
+                        ${alreadyOwned ? `
+                            <a href="${file.fileData}" download="${file.fileName}" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow">
+                                <i class="fas fa-download"></i> Unduh File Sekarang
+                            </a>
+                        ` : `
+                            <button onclick="buyFile('${file.id}')" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow">
+                                <i class="fas fa-shopping-cart"></i> Beli File (${formatRupiah(totalPay)})
+                            </button>
+                        `}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        };
+
+        // Melihat Detail File (Menambah jumlah 'views' / orang yang hanya melihat file)
+        window.openFileDetailModal = async (fileId) => {
+            const file = allFiles.find(f => f.id === fileId);
+            if (!file) return;
+
+            // Tambah counter view jika bukan pemiliknya
+            if (currentUser && file.sellerId !== currentUser.id) {
+                updateDoc(getPublicDoc('files', fileId), {
+                    views: (file.views || 0) + 1
+                }).catch(() => {});
+            }
+
+            document.getElementById('detail-file-title').textContent = file.title;
+            document.getElementById('detail-file-seller').innerHTML = `Dijual oleh <strong>${file.sellerUsername}</strong> • Dilihat ${(file.views || 0) + 1} kali • Terjual ${file.salesCount || 0}x`;
+            document.getElementById('detail-file-desc').textContent = file.description;
+            document.getElementById('review-target-file-id').value = file.id;
+
+            // Cek apakah pelanggan sudah membeli file ini untuk menampilkan form rating & komentar
+            const hasBought = (currentUser?.purchasedFiles || []).includes(file.id);
+            const reviewBox = document.getElementById('detail-review-form-box');
+            if (hasBought && !isAdminSession) {
+                reviewBox.classList.remove('hidden');
+            } else {
+                reviewBox.classList.add('hidden');
+            }
+
+            // Render daftar ulasan
+            const reviewsList = document.getElementById('detail-reviews-list');
+            const reviews = file.reviews || [];
+            if (reviews.length === 0) {
+                reviewsList.innerHTML = `<p class="text-xs text-slate-400 italic">Belum ada ulasan untuk file ini.</p>`;
+            } else {
+                reviewsList.innerHTML = reviews.map(r => `
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+                        <div class="flex justify-between font-bold text-slate-800 mb-1">
+                            <span>${r.username}</span>
+                            <span class="text-amber-500">${'⭐'.repeat(Number(r.rating))}</span>
+                        </div>
+                        <p class="text-slate-600">${r.comment}</p>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('file-detail-modal').classList.remove('hidden');
+        };
+
+        // Proses Pembelian File
+        window.buyFile = async (fileId) => {
+            const file = allFiles.find(f => f.id === fileId);
+            if (!file || !currentUser) return;
+
+            const discountPct = Number(systemSettings.dailyDiscount || 0);
+            const taxAmount = Number(systemSettings.adminTax || 0);
+            const discountedPrice = Math.max(0, Math.round(file.price - (file.price * discountPct / 100)));
+            const totalPay = discountedPrice + taxAmount;
+
+            if (Number(currentUser.balance) < totalPay) {
+                showToast(`Saldo tidak mencukupi! Butuh ${formatRupiah(totalPay)}. Silakan deposit QRIS terlebih dahulu.`, "error");
+                return;
+            }
+
+            try {
+                // 1. Potong saldo pembeli & tambahkan file ke daftar pembelian
+                const updatedPurchases = [...(currentUser.purchasedFiles || []), file.id];
+                await updateDoc(getPublicDoc('users', currentUser.id), {
+                    balance: Number(currentUser.balance) - totalPay,
+                    purchasedFiles: updatedPurchases
+                });
+
+                // 2. Masukkan hasil penjualan ke Agen (atau ke Admin jika penjualnya Admin)
+                if (file.sellerIsAdmin) {
+                    await updateDoc(getPublicDoc('settings', 'main'), {
+                        adminRevenue: Number(systemSettings.adminRevenue || 0) + totalPay
+                    });
+                } else {
+                    const seller = allUsers.find(u => u.id === file.sellerId);
+                    if (seller) {
+                        await updateDoc(getPublicDoc('users', seller.id), {
+                            balance: Number(seller.balance || 0) + discountedPrice
+                        });
+                    }
+                    // Pajak hanya masuk ke Admin
+                    await updateDoc(getPublicDoc('settings', 'main'), {
+                        adminRevenue: Number(systemSettings.adminRevenue || 0) + taxAmount
+                    });
+                }
+
+                // 3. Tambah jumlah terjual
+                await updateDoc(getPublicDoc('files', file.id), {
+                    salesCount: (file.salesCount || 0) + 1
+                });
+
+                showToast(`Berhasil membeli "${file.title}"! Pendapatan penjual otomatis diteruskan ke QRIS/saldo penjual.`, "success");
+                switchMainSection('my-purchases');
+            } catch (err) {
+                showToast("Transaksi gagal: " + err.message, "error");
+            }
+        };
+
+        // Kirim Rating & Komentar Pembeli
+        window.handleSubmitReview = async (e) => {
+            e.preventDefault();
+            const fileId = document.getElementById('review-target-file-id').value;
+            const rating = Number(document.getElementById('review-rating-select').value);
+            const comment = document.getElementById('review-comment-input').value.trim();
+
+            const file = allFiles.find(f => f.id === fileId);
+            if (!file) return;
+
+            const newReview = {
+                userId: currentUser.id,
+                username: currentUser.username,
+                rating,
+                comment,
+                createdAt: Date.now()
+            };
+
+            const updatedReviews = [...(file.reviews || []), newReview];
+            await updateDoc(getPublicDoc('files', fileId), { reviews: updatedReviews });
+            document.getElementById('review-comment-input').value = '';
+            showToast("Terima kasih! Rating dan ulasan Anda telah dipublikasikan.", "success");
+            openFileDetailModal(fileId);
+        };
+
+        // Render File yang Sudah Dibeli
+        function renderPurchasedFiles() {
+            const grid = document.getElementById('purchased-files-grid');
+            if (!currentUser) return;
+            const ownedIds = currentUser.purchasedFiles || [];
+            const ownedFiles = allFiles.filter(f => ownedIds.includes(f.id));
+
+            if (ownedFiles.length === 0) {
+                grid.innerHTML = `<div class="col-span-full glass-card rounded-2xl p-8 text-center text-slate-500 text-sm">Anda belum membeli file apapun.</div>`;
+                return;
+            }
+
+            grid.innerHTML = ownedFiles.map(file => `
+                <div class="glass-card rounded-2xl p-5 shadow-md flex flex-col justify-between">
+                    <div>
+                        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-lg">Sudah Dibeli</span>
+                        <h3 class="text-base font-extrabold text-slate-900 mt-2">${file.title}</h3>
+                        <p class="text-xs text-slate-500 mt-1 mb-4">Penjual: ${file.sellerUsername}</p>
+                    </div>
+                    <div class="space-y-2">
+                        <a href="${file.fileData}" download="${file.fileName}" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2">
+                            <i class="fas fa-download"></i> Unduh (${file.fileName})
+                        </a>
+                        <button onclick="openFileDetailModal('${file.id}')" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs">
+                            <i class="fas fa-star mr-1"></i> Beri Rating & Komentar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render Statistik File Milik Agen/Admin
+        function renderAgentMyFiles() {
+            const list = document.getElementById('agent-my-files-list');
+            if (!currentUser) return;
+            const myFiles = allFiles.filter(f => f.sellerId === currentUser.id);
+
+            if (myFiles.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-500">Anda belum mengunggah file untuk dijual.</p>`;
+                return;
+            }
+
+            list.innerHTML = myFiles.map(f => {
+                const statusBadge = f.status === 'approved'
+                    ? `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-md font-bold">Lolos Uji & Tayang</span>`
+                    : f.status === 'rejected'
+                    ? `<span class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md font-bold">Ditolak (Terdeteksi Berisiko)</span>`
+                    : `<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-md font-bold">Menunggu Uji Malware Admin</span>`;
+
+                return `
+                <div class="bg-white/80 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
+                    <div>
+                        <div class="font-bold text-slate-900 text-sm">${f.title} <span class="text-indigo-600">(${formatRupiah(f.price)})</span></div>
+                        <div class="mt-1 flex flex-wrap items-center gap-2">
+                            ${statusBadge}
+                            <span class="text-slate-600"><i class="far fa-eye text-indigo-500"></i> Dilihat: <strong>${f.views || 0} orang</strong></span>
+                            <span class="text-slate-600"><i class="fas fa-shopping-bag text-emerald-500"></i> Terjual: <strong>${f.salesCount || 0}x</strong></span>
+                        </div>
+                    </div>
+                    <img src="${f.sellerQris}" alt="QRIS Penjual" title="QRIS Penerima Otomatis" class="w-12 h-12 rounded-lg border object-contain bg-white">
+                </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== KODE REDEEM ====================
+        window.openRedeemModal = () => {
+            document.getElementById('redeem-modal').classList.remove('hidden');
+        };
+
+        window.handleClaimRedeem = async (e) => {
+            e.preventDefault();
+            if (isAdminSession) {
+                showToast("Admin tidak dapat menukarkan kode redeem.", "info");
+                return;
+            }
+            const codeInput = document.getElementById('redeem-code-input').value.trim().toUpperCase();
+            const found = allRedeemCodes.find(c => c.code === codeInput);
+
+            if (!found) {
+                showToast("Kode redeem tidak ditemukan atau tidak valid!", "error");
+                return;
+            }
+            const claimedBy = found.claimedBy || [];
+            if (claimedBy.includes(currentUser.id)) {
+                showToast("Anda sudah pernah mengklaim kode redeem ini!", "warning");
+                return;
+            }
+
+            try {
+                await updateDoc(getPublicDoc('users', currentUser.id), {
+                    balance: Number(currentUser.balance || 0) + Number(found.amount)
+                });
+                await updateDoc(getPublicDoc('redeem_codes', found.id), {
+                    claimedBy: [...claimedBy, currentUser.id]
+                });
+                document.getElementById('redeem-code-input').value = '';
+                closeModal('redeem-modal');
+                showToast(`Selamat! Anda mendapatkan hadiah saldo ${formatRupiah(found.amount)}!`, "success");
+            } catch (err) {
+                showToast("Gagal menukarkan kode: " + err.message, "error");
+            }
+        };
+
+        // ==================== PROMOSI SALURAN WHATSAPP (RP 1.000 / GRATIS ADMIN) ====================
+        window.openPromoModal = () => {
+            const notice = document.getElementById('promo-fee-notice');
+            if (isAdminSession) {
+                notice.innerHTML = `Sebagai <strong>Admin</strong>, promosi saluran WhatsApp Anda <strong>GRATIS (Rp 0)</strong>.`;
+            } else {
+                notice.innerHTML = `Biaya promosi saluran WhatsApp adalah <strong>Rp 1.000</strong> (dipotong otomatis dari saldo Anda dan masuk ke Admin).`;
+            }
+            document.getElementById('promo-modal').classList.remove('hidden');
+        };
+
+        window.handleCreateWaPromo = async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('promo-wa-title').value.trim();
+            const link = document.getElementById('promo-wa-link').value.trim();
+            const promoCost = isAdminSession ? 0 : 1000;
+
+            if (!isAdminSession && Number(currentUser.balance || 0) < promoCost) {
+                showToast("Saldo tidak cukup! Dibutuhkan Rp 1.000 untuk mempromosikan saluran WhatsApp.", "error");
+                return;
+            }
+
+            try {
+                if (!isAdminSession) {
+                    // Potong 1000 dari saldo pengguna & masukkan ke Admin
+                    await updateDoc(getPublicDoc('users', currentUser.id), {
+                        balance: Number(currentUser.balance) - promoCost
+                    });
+                    await updateDoc(getPublicDoc('settings', 'main'), {
+                        adminRevenue: Number(systemSettings.adminRevenue || 0) + promoCost
+                    });
+                }
+
+                await addDoc(getPublicCol('wa_promos'), {
+                    title,
+                    link,
+                    ownerId: currentUser.id,
+                    ownerName: currentUser.username,
+                    isAdmin: isAdminSession,
+                    clicks: 0,
+                    createdAt: Date.now()
+                });
+
+                e.target.reset();
+                closeModal('promo-modal');
+                showToast("Saluran WhatsApp Anda berhasil dipromosikan!", "success");
+            } catch (err) {
+                showToast("Gagal membuat promosi: " + err.message, "error");
+            }
+        };
+
+        function renderWaPromos() {
+            const container = document.getElementById('wa-promo-list');
+            if (allPromos.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-xs text-slate-400 italic">Belum ada saluran WhatsApp yang dipromosikan.</div>`;
+                return;
+            }
+
+            container.innerHTML = allPromos.map(p => `
+                <div class="bg-white/90 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm">
+                    <div class="min-w-0">
+                        <div class="text-xs font-extrabold text-slate-900 truncate flex items-center gap-1">
+                            <i class="fab fa-whatsapp text-emerald-500"></i> ${p.title}
+                        </div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">
+                            Oleh: <strong>${p.ownerName}</strong> • <span class="text-emerald-700 font-bold"><i class="fas fa-mouse-pointer"></i> ${p.clicks || 0} klik</span>
+                        </div>
+                    </div>
+                    <button onclick="clickWaPromo('${p.id}', '${p.link}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shrink-0 transition">
+                        Kunjungi
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        window.clickWaPromo = async (promoId, url) => {
+            const promo = allPromos.find(p => p.id === promoId);
+            if (promo) {
+                updateDoc(getPublicDoc('wa_promos', promoId), {
+                    clicks: (promo.clicks || 0) + 1
+                }).catch(() => {});
+            }
+            window.open(url, '_blank', 'noopener,noreferrer');
+        };
+
+        // ==================== FITUR PANEL ADMIN ====================
+        window.switchAdminTab = (tabName) => {
+            document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`admin-tab-${tabName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.admin-sub-btn').forEach(btn => {
+                btn.className = "admin-sub-btn px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold";
+            });
+            event.target.className = "admin-sub-btn px-3.5 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold";
+        };
+
+        // 1. Render Daftar Pengguna, Pengajuan Agen, Blokir & Hapus dengan Upload Surat
+        function renderAdminUsers() {
+            const reqBox = document.getElementById('admin-agent-requests');
+            const pendingAgents = allUsers.filter(u => u.agentStatus === 'pending');
+
+            if (pendingAgents.length === 0) {
+                reqBox.innerHTML = `<p class="text-slate-400">Tidak ada pengajuan agen baru.</p>`;
+            } else {
+                reqBox.innerHTML = pendingAgents.map(u => `
+                    <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <div class="font-bold text-white">${u.username} (${u.agentApplication?.fullName || '-'})</div>
+                            <div class="text-slate-400">Email: ${u.agentApplication?.email || '-'} | Alamat: ${u.agentApplication?.address || '-'}</div>
+                            ${u.agentApplication?.certData ? `<a href="${u.agentApplication.certData}" download="${u.agentApplication.certName || 'Sertifikat.pdf'}" class="text-sky-400 underline mt-1 inline-block"><i class="fas fa-file-alt"></i> Lihat File Sertifikat Perizinan</a>` : ''}
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="approveAgent('${u.id}', true)" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg">Setujui (Beri Centang Biru)</button>
+                            <button onclick="approveAgent('${u.id}', false)" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg">Tolak</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const tbody = document.getElementById('admin-users-tbody');
+            tbody.innerHTML = allUsers.map(u => `
+                <tr class="hover:bg-slate-800/50">
+                    <td class="py-2.5 px-3 font-bold text-white flex items-center gap-1.5">
+                        ${u.username}
+                        ${u.isAgent ? '<i class="fas fa-check-circle text-sky-400" title="Agen"></i>' : ''}
+                    </td>
+                    <td class="py-2.5 px-3 font-mono text-amber-300">${u.password}</td>
+                    <td class="py-2.5 px-3 text-slate-300">${u.age || '-'} thn</td>
+                    <td class="py-2.5 px-3">
+                        ${u.blocked ? '<span class="px-2 py-0.5 bg-rose-600 text-white rounded font-bold">Diblokir</span>' :
+                          u.isAgent ? '<span class="px-2 py-0.5 bg-sky-600 text-white rounded font-bold">Agen</span>' :
+                          '<span class="px-2 py-0.5 bg-slate-600 text-white rounded">Pelanggan</span>'}
+                    </td>
+                    <td class="py-2.5 px-3 font-bold text-emerald-400">${formatRupiah(u.balance)}</td>
+                    <td class="py-2.5 px-3 flex flex-wrap gap-1.5">
+                        ${u.blocked ? `
+                            <button onclick="unblockUser('${u.id}')" class="px-2.5 py-1 bg-emerald-600 text-white rounded font-bold">Buka Blokir</button>
+                        ` : `
+                            <button onclick="promptBlockOrDeleteUser('${u.id}', '${u.username}', 'block')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold">Blokir + Surat</button>
+                        `}
+                        <button onclick="promptBlockOrDeleteUser('${u.id}', '${u.username}', 'delete')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded font-bold">Hapus + Surat</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        window.approveAgent = async (userId, isApproved) => {
+            await updateDoc(getPublicDoc('users', userId), {
+                isAgent: isApproved,
+                agentStatus: isApproved ? 'approved' : 'none'
+            });
+            showToast(isApproved ? "Pengguna resmi menjadi Agen dengan centang biru!" : "Pengajuan agen ditolak.", "success");
+        };
+
+        window.unblockUser = async (userId) => {
+            await updateDoc(getPublicDoc('users', userId), { blocked: false, blockReason: '', blockDocData: '' });
+            showToast("Blokir akun dibuka.", "success");
+        };
+
+        // Modal Upload Surat Pemblokiran / Surat Penghapusan Akun
+        window.promptBlockOrDeleteUser = (userId, username, actionType) => {
+            const isBlock = actionType === 'block';
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').textContent = isBlock ? `Blokir Akun: ${username}` : `Hapus Akun Permanen: ${username}`;
+            document.getElementById('modal-body').innerHTML = `
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Alasan ${isBlock ? 'Pemblokiran' : 'Penghapusan'}</label>
+                        <textarea id="admin-action-reason" rows="2" required placeholder="Tuliskan alasan resmi..." class="w-full px-3 py-2 border border-slate-300 rounded-xl"></textarea>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Upload File ${isBlock ? 'Surat Pemblokiran Akun' : 'Surat Penghapusan Akun'}</label>
+                        <input type="file" id="admin-action-doc" required class="w-full text-slate-600">
+                    </div>
+                </div>
+            `;
+            document.getElementById('modal-actions').innerHTML = `
+                <button onclick="closeModal('custom-modal')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">Batal</button>
+                <button onclick="executeBlockOrDeleteUser('${userId}', '${actionType}')" class="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold">Konfirmasi & Eksekusi</button>
+            `;
+            modal.classList.remove('hidden');
+        };
+
+        window.executeBlockOrDeleteUser = async (userId, actionType) => {
+            const reason = document.getElementById('admin-action-reason').value.trim();
+            const docFile = document.getElementById('admin-action-doc').files[0];
+
+            if (!reason || !docFile) {
+                showToast("Wajib mengisi alasan dan mengunggah file surat!", "warning");
+                return;
+            }
+
+            try {
+                const docData = await fileToDataURL(docFile, 0.6);
+                if (actionType === 'block') {
+                    await updateDoc(getPublicDoc('users', userId), {
+                        blocked: true,
+                        blockReason: reason,
+                        blockDocName: docFile.name,
+                        blockDocData: docData
+                    });
+                    showToast("Akun berhasil diblokir beserta surat pemblokiran.", "success");
+                } else {
+                    // Simpan arsip penghapusan lalu hapus akun
+                    await addDoc(getPublicCol('deleted_accounts_archive'), {
+                        deletedUserId: userId,
+                        reason,
+                        letterName: docFile.name,
+                        letterData: docData,
+                        deletedAt: Date.now()
+                    });
+                    await deleteDoc(getPublicDoc('users', userId));
+                    showToast("Akun berhasil dihapus permanen dengan surat penghapusan.", "success");
+                }
+                closeModal('custom-modal');
+            } catch (err) {
+                showToast("Gagal memproses aksi: " + err.message, "error");
+            }
+        };
+
+        // 2. Verifikasi Deposit QRIS oleh Admin
+        function renderAdminDeposits() {
+            const container = document.getElementById('admin-deposits-list');
+            if (allDeposits.length === 0) {
+                container.innerHTML = `<p class="text-slate-400">Belum ada permintaan deposit.</p>`;
+                return;
+            }
+
+            const sorted = [...allDeposits].sort((a, b) => b.createdAt - a.createdAt);
+            container.innerHTML = sorted.map(dep => `
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col justify-between gap-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-white text-sm">${dep.username} — <span class="text-emerald-400">${formatRupiah(dep.amount)}</span></div>
+                            <div class="text-[11px] text-sky-400 mt-0.5"><i class="fas fa-robot"></i> ${dep.autoCheckStatus}</div>
+                            <div class="mt-1">
+                                Status: <span class="px-2 py-0.5 rounded font-bold ${dep.status === 'pending' ? 'bg-amber-500/20 text-amber-400' : dep.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${dep.status.toUpperCase()}</span>
+                            </div>
+                        </div>
+                        <a href="${dep.proofData}" target="_blank" class="shrink-0">
+                            <img src="${dep.proofData}" alt="Bukti" class="w-16 h-16 object-cover rounded-lg border border-slate-600">
+                        </a>
+                    </div>
+                    ${dep.status === 'pending' ? `
+                        <div class="flex gap-2 pt-2 border-t border-slate-700">
+                            <button onclick="processDeposit('${dep.id}', true)" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg">Setujui & Tambah Saldo</button>
+                            <button onclick="processDeposit('${dep.id}', false)" class="flex-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg">Tolak</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        window.processDeposit = async (depId, isApproved) => {
+            const dep = allDeposits.find(d => d.id === depId);
+            if (!dep) return;
+
+            try {
+                await updateDoc(getPublicDoc('deposits', depId), {
+                    status: isApproved ? 'approved' : 'rejected'
+                });
+
+                if (isApproved) {
+                    const user = allUsers.find(u => u.id === dep.userId);
+                    if (user) {
+                        await updateDoc(getPublicDoc('users', user.id), {
+                            balance: Number(user.balance || 0) + Number(dep.amount)
+                        });
+                    }
+                    showToast(`Deposit ${formatRupiah(dep.amount)} untuk ${dep.username} disetujui!`, "success");
+                } else {
+                    showToast("Deposit ditolak.", "info");
+                }
+            } catch (err) {
+                showToast("Gagal memproses deposit: " + err.message, "error");
+            }
+        };
+
+        // 3. Uji Malware File Agen oleh Admin
+        function renderAdminFilesAudit() {
+            const container = document.getElementById('admin-files-audit-list');
+            const agentFiles = allFiles.filter(f => !f.sellerIsAdmin);
+
+            if (agentFiles.length === 0) {
+                container.innerHTML = `<p class="text-slate-400">Belum ada file dari Agen.</p>`;
+                return;
+            }
+
+            container.innerHTML = agentFiles.map(f => `
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <div class="font-bold text-white text-sm">${f.title} (${formatRupiah(f.price)})</div>
+                        <div class="text-slate-400">Agen: <strong>${f.sellerUsername}</strong> | File: ${f.fileName}</div>
+                        <div class="mt-1">Status Uji: <strong class="${f.status === 'approved' ? 'text-emerald-400' : f.status === 'rejected' ? 'text-rose-400' : 'text-amber-400'}">${f.status}</strong></div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="${f.fileData}" download="${f.fileName}" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg"><i class="fas fa-download"></i> Unduh & Uji File</a>
+                        <button onclick="auditAgentFile('${f.id}', 'approved')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg">Lolos Uji (Bebas Malware)</button>
+                        <button onclick="auditAgentFile('${f.id}', 'rejected')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg">Tolak</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.auditAgentFile = async (fileId, newStatus) => {
+            await updateDoc(getPublicDoc('files', fileId), { status: newStatus });
+            showToast(newStatus === 'approved' ? "File lolos uji malware dan tayang di katalog!" : "File ditolak.", "success");
+        };
+
+        // 4. Simpan Pengaturan Web, QRIS, Jam Buka/Tutup, Logo & Video
+        window.saveAdminSettings = async () => {
+            try {
+                const updates = {
+                    appName: document.getElementById('set-app-name').value.trim() || 'FZZ File Market',
+                    forceClosed: document.getElementById('set-force-closed').checked,
+                    open24h: document.getElementById('set-open-24h').checked,
+                    openTime: document.getElementById('set-open-time').value,
+                    closeTime: document.getElementById('set-close-time').value,
+                    adminTax: Number(document.getElementById('set-admin-tax').value || 0)
+                };
+
+                const logoFile = document.getElementById('set-app-logo').files[0];
+                if (logoFile) {
+                    updates.appLogo = await fileToDataURL(logoFile, 0.5);
+                }
+
+                const qrisFile = document.getElementById('set-admin-qris').files[0];
+                if (qrisFile) {
+                    updates.adminQris = await fileToDataURL(qrisFile, 0.6);
+                }
+
+                const videoFile = document.getElementById('set-bg-video').files[0];
+                const videoUrlInput = document.getElementById('set-bg-video-url').value.trim();
+                if (videoFile) {
+                    // Buat ObjectURL langsung agar video besar tetap mulus diputar terang tanpa batas ukuran dokumen
+                    const localVidUrl = URL.createObjectURL(videoFile);
+                    const videoEl = document.getElementById('bg-video');
+                    videoEl.src = localVidUrl;
+                    videoEl.play().catch(() => {});
+                    if (videoFile.size <= 800000) {
+                        updates.bgVideoUrl = await fileToDataURL(videoFile, 0.8);
+                    }
+                } else if (videoUrlInput) {
+                    updates.bgVideoUrl = videoUrlInput;
+                }
+
+                await updateDoc(getPublicDoc('settings', 'main'), updates);
+                showToast("Pengaturan website berhasil disimpan!", "success");
+            } catch (err) {
+                showToast("Gagal menyimpan pengaturan: " + err.message, "error");
+            }
+        };
+
+        // 5. Simpan Diskon, Papan Informasi & Kode Redeem
+        window.saveInfoAndDiscount = async () => {
+            const dailyDiscount = Number(document.getElementById('set-daily-discount').value || 0);
+            const infoBoard = document.getElementById('set-info-board').value.trim();
+
+            await updateDoc(getPublicDoc('settings', 'main'), {
+                dailyDiscount,
+                infoBoard
+            });
+            showToast("Diskon hari ini & papan informasi berhasil diperbarui!", "success");
+        };
+
+        window.handleCreateRedeemCode = async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('new-redeem-code').value.trim().toUpperCase();
+            const amount = Number(document.getElementById('new-redeem-amount').value);
+
+            await addDoc(getPublicCol('redeem_codes'), {
+                code,
+                amount,
+                claimedBy: [],
+                createdAt: Date.now()
+            });
+            e.target.reset();
+            showToast(`Kode Redeem ${code} (${formatRupiah(amount)}) berhasil ditambahkan!`, "success");
+        };
+
+        function renderAdminRedeemList() {
+            const list = document.getElementById('admin-redeem-list');
+            if (allRedeemCodes.length === 0) {
+                list.innerHTML = `<p class="text-slate-400">Belum ada kode redeem.</p>`;
+                return;
+            }
+            list.innerHTML = allRedeemCodes.map(c => `
+                <div class="flex justify-between items-center bg-slate-900 px-3 py-2 rounded-lg border border-slate-700">
+                    <div>
+                        <span class="font-mono font-bold text-amber-400">${c.code}</span> — <span class="text-emerald-400">${formatRupiah(c.amount)}</span>
+                        <span class="text-slate-500 ml-1">(${(c.claimedBy || []).length} klaim)</span>
+                    </div>
+                    <button onclick="deleteRedeemCode('${c.id}')" class="text-rose-400 hover:text-rose-300"><i class="fas fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        window.deleteRedeemCode = async (id) => {
+            await deleteDoc(getPublicDoc('redeem_codes', id));
+            showToast("Kode redeem dihapus.", "info");
+        };
+
+        // Jalankan sistem saat halaman dimuat
+        window.addEventListener('DOMContentLoaded', initSystem);
+    </script>
+</body>
+</html>
